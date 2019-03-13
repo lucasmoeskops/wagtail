@@ -4,6 +4,8 @@ import django.forms
 from django.utils.translation import ugettext_lazy as _
 
 from wagtail.admin.forms import WagtailAdminPageForm
+from wagtail.contrib.forms.field_types import AbstractFieldType
+from wagtail.contrib.forms.utils import get_field_type
 
 
 class BaseForm(django.forms.Form):
@@ -83,6 +85,10 @@ class FormBuilder:
             Assumes form field creation functions are in the format:
             'create_fieldtype_field'
         """
+        field_type = get_field_type(type)
+        if isinstance(field_type, AbstractFieldType):
+            return field_type.create
+
         create_field_function = getattr(self, 'create_%s_field' % type, None)
         if create_field_function:
             return create_field_function

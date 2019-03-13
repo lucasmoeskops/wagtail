@@ -10,8 +10,11 @@ from unidecode import unidecode
 
 from wagtail.admin.edit_handlers import FieldPanel
 from wagtail.admin.utils import send_mail
+from wagtail.contrib.forms.field_types import AbstractFieldType
+from wagtail.contrib.forms.utils import get_field_type
 from wagtail.core.models import Orderable, Page
 
+from .field_types import DateFieldType
 from .forms import FormBuilder, WagtailAdminFormPageForm
 from .views import SubmissionsListView
 
@@ -26,7 +29,7 @@ FORM_FIELD_CHOICES = (
     ('dropdown', _('Drop down')),
     ('multiselect', _('Multiple select')),
     ('radio', _('Radio buttons')),
-    ('date', _('Date')),
+    ('wagtail.contrib.forms.field_types.DateFieldType', _('Date')),
     ('datetime', _('Date/time')),
     ('hidden', _('Hidden field')),
 )
@@ -80,7 +83,7 @@ class AbstractFormField(Orderable):
         max_length=255,
         help_text=_('The label of the form field')
     )
-    field_type = models.CharField(verbose_name=_('field type'), max_length=16, choices=FORM_FIELD_CHOICES)
+    field_type = models.CharField(verbose_name=_('field type'), max_length=255, choices=FORM_FIELD_CHOICES)
     required = models.BooleanField(verbose_name=_('required'), default=True)
     choices = models.TextField(
         verbose_name=_('choices'),
@@ -279,10 +282,14 @@ class AbstractEmailForm(AbstractForm):
         addresses = [x.strip() for x in self.to_address.split(',')]
         content = []
         for field in form:
+            field_type = get_field_type(field.field_type)
             value = field.value()
-            if isinstance(value, list):
+            if isinstance(field_type, AbstractFieldType):
+                value = field_type.email_value(value)
+            elif isinstance(value, list):
                 value = ', '.join(value)
-            content.append('{}: {}'.format(field.label, value))
+            if value is not None:
+                content.append('{}: {}'.format(field.label, value))
         content = '\n'.join(content)
         send_mail(self.subject, content, addresses, self.from_address,)
 

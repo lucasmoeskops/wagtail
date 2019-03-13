@@ -1,4 +1,7 @@
+from importlib import import_module
+
 from django.contrib.contenttypes.models import ContentType
+from wagtail.contrib.forms.field_types import AbstractFieldType
 
 from wagtail.core import hooks
 from wagtail.core.models import UserPagePermissionsProxy, get_page_models
@@ -33,3 +36,22 @@ def get_forms_for_user(user):
         editable_forms = fn(user, editable_forms)
 
     return editable_forms
+
+
+def get_field_type(identifier):
+    if '.' not in identifier:
+        # Assume it's just a name
+        return identifier
+
+    try:
+        # Try to import the field type class
+        path, name = identifier.rsplit('.', maxsplit=1)
+        module = import_module(path)
+        klass = getattr(module, name)
+        if isinstance(klass, AbstractFieldType):
+            return klass
+        else:
+            raise ValueError('If the form field identifier uses a dot, it should be a path to a '
+                             'field type.')
+    except ImportError:
+        raise ValueError('Invalid form field type identifier. Should be a str or a module path.')
